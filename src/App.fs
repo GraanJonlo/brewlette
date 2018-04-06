@@ -4,6 +4,7 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.Browser
+open System
 
 type Rectangle = {
     fill: U3<string,CanvasGradient,CanvasPattern>
@@ -16,6 +17,7 @@ type Shape =
 
 type Node = {
     translate: float * float
+    rotate: float
     children: Node list
     thingToDraw: Shape
 }
@@ -39,36 +41,44 @@ let rect2 = Rectangle {
 
 let scene =
     {
-        translate = 0., 0.
+        translate = 500., 400.
+        rotate = 0.
         thingToDraw = bg
         children =
             [{
                 translate = 0., 0.
+                rotate = (Math.PI/4.)
                 thingToDraw = rect1
                 children =
                     [{
                         translate = 20., 20.
+                        rotate = -(Math.PI/4.)
                         thingToDraw = rect2
                         children = []
                     }]
             }]
     }
 
-let drawRect (ctx:CanvasRenderingContext2D) (x, y) rect =
-    let x1, y1 = x - rect.width / 2., y - rect.height / 2.
+let drawRect (ctx:CanvasRenderingContext2D) rect =
+    let x1, y1 = 0. - rect.width / 2., 0. - rect.height / 2.
     ctx.fillStyle <- rect.fill
     ctx.fillRect (x1, y1, rect.width, rect.height)
 
-let drawShape (ctx:CanvasRenderingContext2D) coords shape =
+let drawShape (ctx:CanvasRenderingContext2D) shape =
     match shape with
-    | Rectangle r -> drawRect ctx coords r
+    | Rectangle rect -> drawRect ctx rect
 
 let rec drawNode (ctx:CanvasRenderingContext2D) (x,y) n =
     let (tx, ty) = n.translate
     let (x1, y1) = (x + tx, y + ty)
-    drawShape ctx (x1, y1) n.thingToDraw
+
+    ctx.save()
+    ctx.translate (tx,ty)
+    ctx.rotate (n.rotate)
+    drawShape ctx n.thingToDraw
     n.children
     |> Seq.iter (drawNode ctx (x1, y1))
+    ctx.restore()
 
 let init() =
     let canvas = Browser.document.getElementsByTagName_canvas().[0]
