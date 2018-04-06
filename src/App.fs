@@ -11,13 +11,64 @@ type Rectangle = {
     height:float
 }
 
-let drawBg (canvas:HTMLCanvasElement) (ctx:CanvasRenderingContext2D) f =
-    ctx.fillStyle <- f
-    ctx.fillRect (0., 0., canvas.width, canvas.height)
+type Shape =
+    | Rectangle of Rectangle
 
-let drawRect (canvas:HTMLCanvasElement) (ctx:CanvasRenderingContext2D) rect x y =
+type Node = {
+    translate: float * float
+    children: Node list
+    thingToDraw: Shape
+}
+
+let bg = Rectangle {
+    fill = U3.Case1 "black"
+    width = 1000.
+    height = 800.
+}
+
+let rect1 = Rectangle {
+    fill = !^"rgb(200,0,0)"
+    width = 55.
+    height = 50.
+}
+let rect2 = Rectangle {
+    fill = !^"rgba(0, 0, 200, 0.5)"
+    width = 55.
+    height = 50.
+}
+
+let scene =
+    {
+        translate = 0., 0.
+        thingToDraw = bg
+        children =
+            [{
+                translate = 0., 0.
+                thingToDraw = rect1
+                children =
+                    [{
+                        translate = 20., 20.
+                        thingToDraw = rect2
+                        children = []
+                    }]
+            }]
+    }
+
+let drawRect (ctx:CanvasRenderingContext2D) (x, y) rect =
+    let x1, y1 = x - rect.width / 2., y - rect.height / 2.
     ctx.fillStyle <- rect.fill
-    ctx.fillRect (x, y, rect.width, rect.height)
+    ctx.fillRect (x1, y1, rect.width, rect.height)
+
+let drawShape (ctx:CanvasRenderingContext2D) coords shape =
+    match shape with
+    | Rectangle r -> drawRect ctx coords r
+
+let rec drawNode (ctx:CanvasRenderingContext2D) (x,y) n =
+    let (tx, ty) = n.translate
+    let (x1, y1) = (x + tx, y + ty)
+    drawShape ctx (x1, y1) n.thingToDraw
+    n.children
+    |> Seq.iter (drawNode ctx (x1, y1))
 
 let init() =
     let canvas = Browser.document.getElementsByTagName_canvas().[0]
@@ -25,18 +76,6 @@ let init() =
     canvas.height <- 800.
     let ctx = canvas.getContext_2d()
 
-    drawBg canvas ctx <| U3.Case1 "black"
-    let rect1 = {
-        fill = !^"rgb(200,0,0)"
-        width = 55.
-        height = 50.
-    }
-    let rect2 = {
-        fill = !^"rgba(0, 0, 200, 0.5)"
-        width = 55.
-        height = 50.
-    }
-    drawRect canvas ctx rect1 10. 10.
-    drawRect canvas ctx rect2 30. 30.
+    drawNode ctx (500., 400.) scene
 
 init()
